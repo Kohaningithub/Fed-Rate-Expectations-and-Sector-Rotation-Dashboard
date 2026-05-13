@@ -14,7 +14,7 @@ The application is designed as a client-facing market research tool. It sources 
 ## Data Sources
 
 - FRED public CSV endpoints: Effective Fed Funds, Fed target upper bound, 2Y Treasury, 10Y Treasury, and SOFR.
-- Yahoo Finance chart API: Daily adjusted price data for SPY and SPDR sector ETFs.
+- Yahoo Finance chart API with Stooq daily CSV fallback: Daily price data for SPY and SPDR sector ETFs.
 
 The dashboard uses live data by default. If either source is unavailable, the app shows a data connection error so the user can trust that displayed analysis is sourced from current market data.
 
@@ -26,7 +26,7 @@ The dashboard uses live data by default. If either source is unavailable, the ap
 - NumPy
 - Plotly
 - FRED public CSV endpoints
-- Yahoo Finance chart API for ETF price data
+- Yahoo Finance chart API and Stooq daily CSV fallback for ETF price data
 
 ## Run Locally
 
@@ -35,7 +35,7 @@ python -m pip install -r requirements.txt
 python -m streamlit run app.py
 ```
 
-The dashboard opens in live mode by default using FRED and Yahoo Finance chart data.
+The dashboard opens in live mode by default using FRED and public ETF price feeds from Yahoo Finance with Stooq as a fallback.
 
 ## Deploy on Streamlit Community Cloud
 
@@ -51,7 +51,7 @@ The `Market Interpretation` view generates a client-facing explanation from the 
 - Top and bottom sector rotation rankings.
 - 1M, 3M, 6M, and YTD sector returns.
 - Regime-level sector performance.
-- Data-through dates for FRED and Yahoo Finance.
+- Data-through dates for FRED and public ETF price feeds.
 
 It does not make buy, sell, hold, price-target, or allocation recommendations. The goal is to help users understand what the dashboard is showing and what questions to monitor next.
 
@@ -86,7 +86,7 @@ Sector rotation is scored with a weighted blend of:
 ## Resume Bullets
 
 - Built a Streamlit investment research dashboard linking Fed policy expectations, Treasury yield-curve signals, and US sector ETF rotation.
-- Engineered macro-financial indicators from FRED and ETF price data from Yahoo Finance, including a 2Y-Fed Funds policy expectations proxy and 10Y-2Y curve regime signal.
+- Engineered macro-financial indicators from FRED and ETF price data from Yahoo Finance/Stooq, including a 2Y-Fed Funds policy expectations proxy and 10Y-2Y curve regime signal.
 - Developed a sector rotation scoring model combining momentum, volatility, and drawdown to rank sector leadership under different monetary policy regimes.
 
 ## Interview Talking Points
@@ -98,4 +98,4 @@ Sector rotation is scored with a weighted blend of:
 
 ## Data Caveats
 
-This project is an analytical screen, not investment advice. FRED and Yahoo Finance are public data sources, but production investment workflows should include formal data validation, adjusted-return checks, and source licensing review.
+This project is an analytical screen, not investment advice. FRED, Yahoo Finance, and Stooq are public data sources, but production investment workflows should include formal data validation, adjusted-return checks, and source licensing review.

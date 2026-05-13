@@ -132,7 +132,8 @@ except Exception as exc:
     st.title("Fed Rate Expectations and Sector Rotation Dashboard")
     st.error("Live data connection failed. Please refresh the page or try again later.")
     st.info(
-        "This dashboard depends on FRED public CSV endpoints for rates and Yahoo Finance chart data for ETF prices."
+        "This dashboard depends on FRED public CSV endpoints for rates and public Yahoo Finance/Stooq price feeds "
+        "for ETF prices. Deployed cloud environments can occasionally time out when a public data provider is slow."
     )
     st.caption(f"Technical detail: {exc}")
     st.stop()
@@ -141,11 +142,13 @@ macro = classify_policy_regime(data.macro)
 columns = sector_columns(data.prices)
 
 with st.sidebar:
-    st.success("Live FRED/Yahoo data active.")
+    st.success("Live public market data active.")
     st.caption(f"Macro through {macro.index.max().date()}")
     st.caption(f"ETF prices through {data.prices.index.max().date()}")
     if data.metadata.get("warning"):
         st.warning(data.metadata["warning"])
+    with st.expander("Price feed by ticker"):
+        st.caption(data.metadata.get("price_sources", "Source detail unavailable."))
     selected_sectors = st.multiselect(
         "Sectors",
         options=columns,
@@ -180,7 +183,7 @@ st.markdown(
       </div>
       <div class="info-tile">
         <strong>Live Data</strong>
-        <span>Rates from FRED through {macro.index.max().date()}. ETF prices from Yahoo Finance through {data.prices.index.max().date()}.</span>
+        <span>Rates from FRED through {macro.index.max().date()}. ETF prices from public Yahoo Finance/Stooq feeds through {data.prices.index.max().date()}.</span>
       </div>
       <div class="info-tile">
         <strong>Decision Lens</strong>
@@ -356,7 +359,7 @@ elif view == "Methodology":
         **Data inputs**
 
         - FRED: Effective Fed Funds, Fed target upper bound, 2Y Treasury, 10Y Treasury, and SOFR.
-        - Yahoo Finance chart API: Daily adjusted ETF price histories for SPY and SPDR sector ETFs.
+        - Yahoo Finance chart API with Stooq daily CSV fallback: Daily ETF price histories for SPY and SPDR sector ETFs.
 
         **Core metrics**
 
