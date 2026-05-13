@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from io import BytesIO
 import json
+from pathlib import Path
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlencode
@@ -16,6 +17,10 @@ import pandas as pd
 DEFAULT_START_DATE = date(2018, 1, 1)
 REQUEST_TIMEOUT_SECONDS = 6
 REQUEST_RETRIES = 2
+SNAPSHOT_DIR = Path(__file__).resolve().parents[1] / "data"
+SNAPSHOT_MACRO_FILE = SNAPSHOT_DIR / "live_macro_snapshot.csv"
+SNAPSHOT_PRICES_FILE = SNAPSHOT_DIR / "live_prices_snapshot.csv"
+SNAPSHOT_METADATA_FILE = SNAPSHOT_DIR / "live_snapshot_metadata.json"
 
 FRED_SERIES = {
     "DFF": "fed_funds_effective",
@@ -230,7 +235,7 @@ def load_price_data(start_date: date) -> pd.DataFrame:
     return prices.dropna(how="all")
 
 
-def load_dashboard_data(start_date: date = DEFAULT_START_DATE) -> DataLoadResult:
+def build_live_dashboard_data(start_date: date = DEFAULT_START_DATE) -> DataLoadResult:
     macro = load_macro_data(start_date)
     prices = load_price_data(start_date)
     warnings = prices.attrs.get("warnings", "")
@@ -241,7 +246,57 @@ def load_dashboard_data(start_date: date = DEFAULT_START_DATE) -> DataLoadResult
         prices=prices,
         metadata={
             "source": f"FRED macro series and {'/'.join(price_sources)} ETF prices",
+            "source_mode": "live",
             "warning": warnings,
             "price_sources": ", ".join(f"{ticker}: {source}" for ticker, source in sorted(source_by_ticker.items())),
         },
     )
+
+
+def _read_snapshot_frame(path: Path) -> pd.DataFrame:
+    frame = pd.read_csv(path, parse_dates=["Date"])
+    if "Date" not in frame.columns:
+        raise ValueError(f"Snapshot file is missing Date column: {path.name}")
+    return frame.set_index("Date").sort_index()
+
+
+def load_snapshot_dashboard_data(start_date: date, live_error: Exception) -> DataLoadResult:
+    missing = [
+        path.name
+        for path in (SNAPSHOT_MACRO_FILE, SNAPSHOT_PRICES_FILE, SNAPSHOT_METADATA_FILE)
+        if not path.exists()
+    ]
+    if missing:
+        raise RuntimeError(f"Live data failed and snapshot files are missing: {', '.join(missing)}") from live_error
+
+    macro = _read_snapshot_frame(SNAPSHOT_MACRO_FILE)
+    prices = _read_snapshot_frame(SNAPSHOT_PRICES_FILE)
+    macro = macro.loc[macro.index >= pd.Timestamp(start_date)]
+    prices = prices.loc[prices.index >= pd.Timestamp(start_date)]
+    if macro.empty or prices.empty:
+        raise RuntimeError("Snapshot data is empty for the selected start date.") from live_error
+
+    with SNAPSHOT_METADATA_FILE.open("r", encoding="utf-8") as file:
+        snapshot_metadata = json.load(file)
+
+    return DataLoadResult(
+        macro=macro,
+        prices=prices,
+        metadata={
+            "source": "Committed live-data snapshot from FRED and public ETF price feeds",
+            "source_mode": "snapshot",
+            "warning": (
+                "Live public data timed out in this environment; using the latest committed live-data snapshot."
+            ),
+            "price_sources": str(snapshot_metadata.get("price_sources", "Snapshot source detail unavailable.")),
+            "snapshot_created_at": str(snapshot_metadata.get("snapshot_created_at", "unknown")),
+            "live_error": str(live_error)[:400],
+        },
+    )
+
+
+def load_dashboard_data(start_date: date = DEFAULT_START_DATE) -> DataLoadResult:
+    try:
+        return build_live_dashboard_data(start_date=start_date)
+    except Exception as exc:
+        return load_snapshot_dashboard_data(start_date=start_date, live_error=exc)

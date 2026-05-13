@@ -140,13 +140,32 @@ except Exception as exc:
 
 macro = classify_policy_regime(data.macro)
 columns = sector_columns(data.prices)
+is_snapshot_mode = data.metadata.get("source_mode") == "snapshot"
+data_status_label = (
+    "Using latest committed live-market snapshot."
+    if is_snapshot_mode
+    else "Live public market data active."
+)
+data_source_copy = (
+    f"Rates and ETF prices use the latest committed live-data snapshot through {data.prices.index.max().date()}."
+    if is_snapshot_mode
+    else (
+        f"Rates from FRED through {macro.index.max().date()}. ETF prices from public Yahoo Finance/Stooq feeds "
+        f"through {data.prices.index.max().date()}."
+    )
+)
 
 with st.sidebar:
-    st.success("Live public market data active.")
+    if is_snapshot_mode:
+        st.warning(data_status_label)
+    else:
+        st.success(data_status_label)
     st.caption(f"Macro through {macro.index.max().date()}")
     st.caption(f"ETF prices through {data.prices.index.max().date()}")
     if data.metadata.get("warning"):
         st.warning(data.metadata["warning"])
+    if data.metadata.get("snapshot_created_at"):
+        st.caption(f"Snapshot captured {data.metadata['snapshot_created_at']}")
     with st.expander("Price feed by ticker"):
         st.caption(data.metadata.get("price_sources", "Source detail unavailable."))
     selected_sectors = st.multiselect(
@@ -183,7 +202,7 @@ st.markdown(
       </div>
       <div class="info-tile">
         <strong>Live Data</strong>
-        <span>Rates from FRED through {macro.index.max().date()}. ETF prices from public Yahoo Finance/Stooq feeds through {data.prices.index.max().date()}.</span>
+        <span>{data_source_copy}</span>
       </div>
       <div class="info-tile">
         <strong>Decision Lens</strong>

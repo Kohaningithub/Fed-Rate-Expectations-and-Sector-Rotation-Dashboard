@@ -16,7 +16,7 @@ The application is designed as a client-facing market research tool. It sources 
 - FRED public CSV endpoints: Effective Fed Funds, Fed target upper bound, 2Y Treasury, 10Y Treasury, and SOFR.
 - Yahoo Finance chart API with Stooq daily CSV fallback: Daily price data for SPY and SPDR sector ETFs.
 
-The dashboard uses live data by default. If either source is unavailable, the app shows a data connection error so the user can trust that displayed analysis is sourced from current market data.
+The dashboard uses live data by default. If deployed cloud networking times out while calling public data feeds, the app automatically falls back to the latest committed live-data snapshot. This is not sample data: the snapshot is generated from the same live FRED and ETF price feeds and is included so the client-facing app remains usable when a public endpoint is slow.
 
 ## Tech Stack
 
@@ -36,6 +36,12 @@ python -m streamlit run app.py
 ```
 
 The dashboard opens in live mode by default using FRED and public ETF price feeds from Yahoo Finance with Stooq as a fallback.
+
+To refresh the committed cloud fallback snapshot before a deployment:
+
+```bash
+python scripts/update_live_snapshot.py
+```
 
 ## Deploy on Streamlit Community Cloud
 
